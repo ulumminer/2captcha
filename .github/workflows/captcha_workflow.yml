@@ -29,4 +29,4 @@ jobs:
 
       - name: Run 2Captcha Logger
         run: |
-          python your_script_name.py
+          python 2captcha.py
