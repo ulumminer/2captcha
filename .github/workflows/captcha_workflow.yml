@@ -1,0 +1,32 @@
+name: 2Captcha Logger Auto
+
+on:
+  schedule:
+    - cron: '59 16 * * *' # 23:59 WIB (UTC+7)
+  workflow_dispatch:
+
+jobs:
+  log_2captcha_to_gsheet:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install gspread google-auth requests
+
+      - name: Create credentials.json from secret
+        run: |
+          echo "$GOOGLE_CREDENTIALS_JSON" > credentials.json
+
+      - name: Run 2Captcha Logger
+        run: |
+          python your_script_name.py
