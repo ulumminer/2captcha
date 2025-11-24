@@ -1,6 +1,7 @@
 // server.js - Deploy di Render.com
 const express = require('express');
-const puppeteer = require('puppeteer');
+const puppeteer = require('puppeteer-core');
+const chromium = require('@sparticuz/chromium');
 
 const app = express();
 const PORT = process.env.PORT || 10000;
@@ -19,29 +20,18 @@ app.get('/scrape-invoices', async (req, res) => {
   let browser;
   
   try {
-    // Launch browser dengan config untuk Render
+    // Launch browser dengan Chromium dari @sparticuz
     browser = await puppeteer.launch({
-      headless: 'new',
-      args: [
-        '--no-sandbox',
-        '--disable-setuid-sandbox',
-        '--disable-dev-shm-usage',
-        '--disable-accelerated-2d-canvas',
-        '--no-first-run',
-        '--no-zygote',
-        '--single-process',
-        '--disable-gpu'
-      ],
-      executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || puppeteer.executablePath()
+      args: chromium.args,
+      defaultViewport: chromium.defaultViewport,
+      executablePath: await chromium.executablePath(),
+      headless: chromium.headless
     });
     
     const page = await browser.newPage();
     
     // Set user agent
     await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
-    
-    // Set viewport
-    await page.setViewport({ width: 1920, height: 1080 });
     
     // Navigate dan tunggu JavaScript selesai
     await page.goto('https://khatulistiwanet.unaux.com/invoices.php', {
