@@ -1,75 +1,65 @@
-export default {
-  async fetch(request) {
-    const url = new URL(request.url);
+// server.js - Deploy di Render.com, Railway.app, atau VPS
+const express = require('express');
+const chromium = require('chrome-aws-lambda');
+const puppeteer = require('puppeteer-core');
+
+const app = express();
+const PORT = process.env.PORT || 3000;
+
+// Endpoint untuk scrape invoices
+app.get('/scrape-invoices', async (req, res) => {
+  let browser;
+  
+  try {
+    // Launch browser
+    browser = await puppeteer.launch({
+      headless: true,
+      args: [
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--disable-dev-shm-usage',
+        '--disable-gpu'
+      ]
+    });
     
-    if (url.pathname === '/invoices' || url.pathname === '/') {
-      try {
-        // GANTI INI dengan URL Puppeteer server lo
-        const PUPPETEER_SERVER = 'https://your-puppeteer-server.onrender.com';
-        
-        // Fetch via Puppeteer server
-        const response = await fetch(`${PUPPETEER_SERVER}/scrape-invoices`, {
-          headers: {
-            'Accept': 'text/html'
-          },
-          cf: {
-            cacheTtl: 60,
-            cacheEverything: true
-          }
-        });
-        
-        if (!response.ok) {
-          throw new Error(`Puppeteer server error: ${response.status}`);
-        }
-        
-        const data = await response.text();
-        
-        return new Response(data, {
-          status: 200,
-          headers: {
-            'Content-Type': 'text/html; charset=utf-8',
-            'Access-Control-Allow-Origin': '*',
-            'Cache-Control': 'public, max-age=60'
-          }
-        });
-        
-      } catch (error) {
-        return new Response(`
-Error: ${error.message}
-
-Setup Instructions:
-===================
-1. Deploy Puppeteer server (lihat artifact 'Puppeteer Server')
-2. Update PUPPETEER_SERVER variable di Worker ini
-3. Test: /tool fetch url="https://mikrotik-gw.ulumtea-ulum.workers.dev/invoices" output=user
-
-Deployment Options:
-- Render.com (Free tier, auto-deploy from GitHub)
-- Railway.app (Free $5/month credit)
-- Fly.io (Free tier available)
-- Your own VPS
-
-        `, {
-          status: 500,
-          headers: { 'Content-Type': 'text/plain' }
-        });
-      }
-    }
+    const page = await browser.newPage();
     
-    // Help
-    return new Response(`
-MikroTik Gateway Worker
-======================
-Status: Waiting for Puppeteer server setup
-
-Endpoint: /invoices
-
-Setup required:
-1. Deploy Puppeteer server
-2. Update Worker configuration
-    `, {
-      status: 200,
-      headers: { 'Content-Type': 'text/plain' }
+    // Set user agent
+    await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36');
+    
+    // Navigate dan tunggu JavaScript selesai
+    await page.goto('https://khatulistiwanet.unaux.com/invoices.php', {
+      waitUntil: 'networkidle2',
+      timeout: 30000
+    });
+    
+    // Tunggu redirect selesai (dari JavaScript)
+    await page.waitForTimeout(3000);
+    
+    // Ambil content final
+    const content = await page.content();
+    
+    await browser.close();
+    
+    // Return HTML content
+    res.setHeader('Content-Type', 'text/html');
+    res.send(content);
+    
+  } catch (error) {
+    if (browser) await browser.close();
+    
+    res.status(500).json({
+      error: error.message,
+      stack: error.stack
     });
   }
-}
+});
+
+// Health check
+app.get('/health', (req, res) => {
+  res.json({ status: 'ok', service: 'puppeteer-scraper' });
+});
+
+app.listen(PORT, () => {
+  console.log(`Puppeteer server running on port ${PORT}`);
+});
