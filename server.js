@@ -4,22 +4,19 @@ const chromium = require('chrome-aws-lambda');
 const puppeteer = require('puppeteer-core');
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 10000;
 
 // Endpoint untuk scrape invoices
 app.get('/scrape-invoices', async (req, res) => {
   let browser;
   
   try {
-    // Launch browser
+    // Launch browser with chrome-aws-lambda (lighter)
     browser = await puppeteer.launch({
-      headless: true,
-      args: [
-        '--no-sandbox',
-        '--disable-setuid-sandbox',
-        '--disable-dev-shm-usage',
-        '--disable-gpu'
-      ]
+      args: chromium.args,
+      defaultViewport: chromium.defaultViewport,
+      executablePath: await chromium.executablePath,
+      headless: chromium.headless
     });
     
     const page = await browser.newPage();
@@ -56,6 +53,10 @@ app.get('/scrape-invoices', async (req, res) => {
 });
 
 // Health check
+app.get('/', (req, res) => {
+  res.json({ status: 'ok', service: 'puppeteer-scraper' });
+});
+
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', service: 'puppeteer-scraper' });
 });
